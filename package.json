@@ -1,0 +1,41 @@
+{
+  "name": "only-one-tab",
+  "version": "1.0.0",
+  "description": "Run a function in exactly one open tab, switching to another if closed",
+  "main": "only-one-tab.js",
+  "scripts": {
+    "test": "standard && browserify -r ./only-one-tab.js:only-one-tab only-one-tab.js > bundle.js && node test.js | tap-spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kayleepop/only-one-tab.git"
+  },
+  "keywords": [
+    "only",
+    "one",
+    "tab",
+    "localstorage",
+    "multiple",
+    "leader",
+    "elect",
+    "tab",
+    "race"
+  ],
+  "author": "KayleePop",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/kayleepop/only-one-tab/issues"
+  },
+  "homepage": "https://github.com/kayleepop/only-one-tab#readme",
+  "devDependencies": {
+    "browserify": "^16.2.3",
+    "muggle-assert": "^1.1.3",
+    "muggle-test": "^1.0.0",
+    "puppeteer": "^1.18.1",
+    "standard": "^14.0.0",
+    "tap-spec": "^5.0.0"
+  },
+  "dependencies": {
+    "tab-race": "^1.0.0"
+  }
+}
