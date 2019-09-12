@@ -58,6 +58,8 @@ module.exports = async function onlyOneTab (action) {
     if (await race(actorRaceId)) {
       becomeActor()
 
+      break // end periodic check since we're the actor now
+
     // reset if the last active tab closed without ending the actor race somehow
     } else if (isTimedOut()) {
       // multiple tabs may try to reset at once, so a race is necessary
@@ -69,6 +71,8 @@ module.exports = async function onlyOneTab (action) {
         // also wait for any other resetters to finish to prevent multiple actors
         await sleep(1000)
         endRace(resetRaceId)
+
+        break // end periodic check since we're the actor now
       }
     }
 
