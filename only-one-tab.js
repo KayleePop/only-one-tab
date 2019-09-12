@@ -41,10 +41,12 @@ module.exports = async function onlyOneTab (action) {
   }
 
   // localStorage.setItem(vacantKey, 'vacant') signals the actor tab closed
-  window.addEventListener('storage', async (event) => {
+  window.addEventListener('storage', async function handler (event) {
     if (event.key === vacantKey && event.newValue === 'vacant') {
       if (await race(actorRaceId)) {
         becomeActor()
+
+        window.removeEventListener('storage', handler) // cleanup
       }
     }
   })
