@@ -54,6 +54,7 @@ module.exports = async function onlyOneTab (action) {
   // sometimes the 'storage' event doesn't fire
   // somtimes the actorRace randomly gets stuck
   while (true) {
+    // actorRace lasts until actor tab is closed
     if (await race(actorRaceId)) {
       becomeActor()
 
