@@ -78,8 +78,7 @@ module.exports = async function onlyOneTab (action) {
       }
     }
 
-    // indexedDB operations are expensive, and things only get stuck very rarely
-    await sleep(5 * 1000)
+    await sleep(1000)
   }
 
   // returns a boolean for whether an old actor tab crashed
