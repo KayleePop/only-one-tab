@@ -13,7 +13,7 @@ module.exports = async function onlyOneTab (action) {
   const vacantKey = 'onlyOneTab-actor-status'
   const actorRaceId = 'onlyOneTab-actor-race'
   const resetRaceId = 'onlyOneTab-reset-race'
-  const heartbeatInterval = 1000
+  const heartbeatInterval = 1000 // 1s is the minimum settimeout for background tabs
 
   async function becomeActor () {
     action()
