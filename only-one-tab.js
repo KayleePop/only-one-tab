@@ -68,9 +68,18 @@ module.exports = async function onlyOneTab (action) {
     }
   }
 
-  // returns a boolean for whether there is an active tab
+  // returns a boolean for whether an old actor crashed
   function isTimedOut () {
     const lastHeartbeatString = localStorage.getItem(heartbeatKey)
+
+    // if the key is null, then there was no previous actor.
+    // not checking for this allows multiple actors when multiple tabs are
+    // opened before the first actor makes a heartbeat
+    // one wins the race and another wins the unnecessary reset
+    if (lastHeartbeatString === null) {
+      return false
+    }
+
     const msSinceLastHeartbeat = new Date() - new Date(lastHeartbeatString)
 
     // times out after 3 missed heartbeats
