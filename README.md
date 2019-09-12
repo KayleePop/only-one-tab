@@ -28,4 +28,8 @@ The callback is run only once per tab, and on exactly one tab at a time. When th
 
 ## Recovery
 
-After a browser crash, or something similar that causes the acting tab to close without properly resetting and allowing another to replace it, a refresh or new tab will check for a heartbeat and force a reset.
+After a browser crash, or something similar, the actor tab can be closed without being replaced normally.
+
+Every tab periodically checks for an active tab's heartbeat, and after 1-4 seconds, a new tab will become the actor to replace the crashed tab. A refresh or new tab will do the check immediately on startup as well.
+
+If nothing goes wrong, a new actor replaces the closed tab immediately.
