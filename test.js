@@ -33,6 +33,12 @@ async function runOnPage (page, asyncFunc) {
   })
 }
 
+// returns tab object
+// {
+//   page: (puppeteer page for this tab),
+//   isActing: (has the onlyOneTab callback been run yet?)
+//   actingPromise: (promise for when the onlyOneTab callback runs)
+// }
 async function newTab (browser) {
   const page = await browser.newPage()
 
@@ -112,6 +118,7 @@ test('there should be only one actor after opening many tabs concurrently', asyn
   browser.close()
 })
 
+// this reliably tests recovery from getting stuck
 test('close all but one non-acting tab at once', async () => {
   const browser = await puppeteer.launch()
 
@@ -208,15 +215,15 @@ test('should recover from crash with exactly one actor', async () => {
   browser.close()
 })
 
-test('smoke: open a lot of tabs, then close each actor tab in sequence', async () => {
+test('open a lot of tabs, then close each actor tab in sequence', async () => {
   const browser = await puppeteer.launch()
 
-  const tabs = []
+  const tabPromises = []
   for (let i = 0; i < 100; i++) {
-    // open in sequence to mimic actual behavior
-    const tab = await newTab(browser)
-    tabs.push(tab)
+    tabPromises.push(newTab(browser))
   }
+
+  const tabs = await Promise.all(tabPromises)
 
   while (tabs.length > 0) {
     // wait for a tab to become actor
@@ -237,15 +244,15 @@ test('smoke: open a lot of tabs, then close each actor tab in sequence', async (
   browser.close()
 })
 
-test('smoke: open a lot of tabs, then close them randomly', async () => {
+test('open a lot of tabs, then close them randomly', async () => {
   const browser = await puppeteer.launch()
 
-  const tabs = []
+  const tabPromises = []
   for (let i = 0; i < 100; i++) {
-    // open in sequence to mimic actual behavior
-    const tab = await newTab(browser)
-    tabs.push(tab)
+    tabPromises.push(newTab(browser))
   }
+
+  const tabs = await Promise.all(tabPromises)
 
   while (tabs.length > 0) {
     // wait until any tab is an actor
