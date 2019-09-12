@@ -1,6 +1,6 @@
 {
   "name": "only-one-tab",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Run a function in exactly one open tab, switching to another if closed",
   "main": "only-one-tab.js",
   "scripts": {
