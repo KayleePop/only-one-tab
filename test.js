@@ -14,25 +14,6 @@ async function rejectAfter10s (error) {
   throw error
 }
 
-async function runOnPage (page, asyncFunc) {
-  // this html file loads ./bundle.js which is ./only-one-tab.js browserified
-  // -r is used to allow window.require('only-one-tab') in other script
-  await page.goto(`file://${require.resolve('./test.html')}`)
-
-  return new Promise((resolve, reject) => {
-    page.exposeFunction('resolveNodePromise', resolve)
-      .then(() => page.exposeFunction('rejectNodePromise', reject))
-      .then(() => page.addScriptTag({
-        // immediately invoke passed function on the page and wait for it to resolve
-        content:
-        `(${asyncFunc.toString()})()
-          .then(window.resolveNodePromise)
-          .catch(window.rejectNodePromise)`
-      }))
-      .catch(reject)
-  })
-}
-
 // returns tab object
 // {
 //   page: (puppeteer page for this tab),
@@ -42,89 +23,118 @@ async function runOnPage (page, asyncFunc) {
 async function newTab (browser) {
   const page = await browser.newPage()
 
+  // this html file loads ./bundle.js which is ./only-one-tab.js browserified
+  // -r is used to allow window.require('only-one-tab') in other script
+  await page.goto(`file://${require.resolve('./test.html')}`)
+
   const tab = {
     page: page,
     isActing: false
   }
 
-  tab.actingPromise = runOnPage(page, async () => {
+  // create deffered promise
+  tab.actingPromise = new Promise((resolve) => {
+    tab.resolveActingPromise = resolve
+  })
+
+  // allow this function to be remotely called from the page with window.nowActing()
+  await page.exposeFunction('nowActing', () => {
+    tab.isActing = true
+    tab.resolveActingPromise()
+  })
+
+  // execute toRunOnPage() on the page's thread
+  await page.addScriptTag({ content: `(${toRunOnPage.toString()})()` })
+  function toRunOnPage () {
     const onlyOneTab = require('only-one-tab')
 
-    await new Promise((resolve) => {
-      onlyOneTab(() => {
-        // console logs for debugging with devtools
-        console.log('this tab started acting at ', new Date())
+    onlyOneTab(() => {
+      // console logs for debugging with devtools
+      console.log('this tab started acting at ', new Date())
 
-        resolve()
-      })
+      window.nowActing()
     })
-  })
-  // .then is required because the above async function runs on the page not here
-    .then(() => {
-      // set isActing to true after the onlyOneTab() callback runs
-      tab.isActing = true
-    })
+  }
 
   return tab
 }
 
-test('a closing tab should successfully signal a new actor', async () => {
+test('a closing tab should successfully signal only one new actor', async () => {
   const browser = await puppeteer.launch()
 
-  const tabs = []
-
-  // start with one tab
-  tabs.push(await newTab(browser))
+  // open 100 tabs
+  const tabPromises = []
+  for (let i = 0; i < 100; i++) {
+    tabPromises.push(newTab(browser))
+  }
+  const tabs = await Promise.all(tabPromises)
 
   // repeat to ensure consistency
   for (let i = 0; i < 100; i++) {
-    // add one tab
-    tabs.push(await newTab(browser))
-
     // wait for a tab to become actor
     await Promise.race([
       rejectAfter10s(new Error('timed out waiting for new tab to become actor')),
       ...tabs.map((tab) => tab.actingPromise)
     ])
 
+    // wait for any other tabs to finish becoming actors
+    await sleep(100)
+
+    const actingTabs = tabs.filter((tab) => tab.isActing === true)
+    assert.equal(actingTabs.length, 1, 'there should be exactly one actor')
+
     // close the acting tab and remove from tabs[]
     const actingIndex = tabs.findIndex((tab) => tab.isActing === true)
     await tabs[actingIndex].page.close({ runBeforeUnload: true })
     tabs.splice(actingIndex, 1)
+
+    // keep same number of tabs for next iteration
+    tabs.push(await newTab(browser))
   }
 
   browser.close()
 })
 
-test('there should be only one actor after opening many tabs concurrently', async () => {
+test('closing non-acting tabs should not signal more actors', async () => {
   const browser = await puppeteer.launch()
 
-  const openingTabs = []
-  for (let i = 0; i < 200; i++) {
-    // open in parallel to allow them to compete
-    openingTabs.push(newTab(browser))
+  const actor = await newTab(browser)
+  await actor.actingPromise
+
+  const tabPromises = []
+  for (let i = 0; i < 100; i++) {
+    tabPromises.push(newTab(browser))
+  }
+  const nonActingTabs = await Promise.all(tabPromises)
+
+  // restart many non-acting tabs
+  for (let i = 0; i < 100; i++) {
+    // close random non acting tab and remove from array
+    const randomTabIndex = Math.floor(Math.random() * nonActingTabs.length)
+    await nonActingTabs[randomTabIndex].page.close({ runBeforeUnload: true })
+    nonActingTabs.splice(randomTabIndex, 1)
+
+    // replace closed tab
+    nonActingTabs.push(await newTab(browser))
   }
 
-  const tabs = await Promise.all(openingTabs)
+  // wait for any tabs to finish becoming actors
+  await sleep(2 * 1000)
 
-  await Promise.race([
-    rejectAfter10s(new Error('timed out waiting for new tab to become actor')),
-    ...tabs.map((tab) => tab.actingPromise)
-  ])
-
-  const actingTabs = tabs.filter((tab) => tab.isActing === true)
-  assert.equal(actingTabs.length, 1, 'there should be exactly one actor')
+  for (const nonActingTab of nonActingTabs) {
+    assert(!nonActingTab.isActing, 'non-acting tabs should not be acting')
+  }
 
   browser.close()
 })
 
 // this reliably tests recovery from getting stuck
-test('close all but one non-acting tab at once', async () => {
+test('quickly close lots of tabs at once including the actor', async () => {
   const browser = await puppeteer.launch()
 
-  // open 99 tabs
+  // open 199 tabs
   const tabPromises = []
-  for (let i = 0; i < 99; i++) {
+  for (let i = 0; i < 199; i++) {
     tabPromises.push(newTab(browser))
   }
 
@@ -211,67 +221,6 @@ test('should recover from crash with exactly one actor', async () => {
 
   const actors = tabs.filter((tab) => tab.isActing === true)
   assert.equal(actors.length, 1, 'there should be exactly one actor')
-
-  browser.close()
-})
-
-test('open a lot of tabs, then close each actor tab in sequence', async () => {
-  const browser = await puppeteer.launch()
-
-  const tabPromises = []
-  for (let i = 0; i < 100; i++) {
-    tabPromises.push(newTab(browser))
-  }
-
-  const tabs = await Promise.all(tabPromises)
-
-  while (tabs.length > 0) {
-    // wait for a tab to become actor
-    await Promise.race([
-      rejectAfter10s(new Error('timed out waiting for new tab to become actor')),
-      ...tabs.map((tab) => tab.actingPromise)
-    ])
-
-    const actingTabs = tabs.filter((tab) => tab.isActing === true)
-    assert.equal(actingTabs.length, 1, 'there should be exactly one actor')
-
-    // close the acting tab and remove from tabs[]
-    const actingIndex = actingTabs.findIndex((tab) => tab.isActing === true)
-    await tabs[actingIndex].page.close({ runBeforeUnload: true })
-    tabs.splice(actingIndex, 1)
-  }
-
-  browser.close()
-})
-
-test('open a lot of tabs, then close them randomly', async () => {
-  const browser = await puppeteer.launch()
-
-  const tabPromises = []
-  for (let i = 0; i < 100; i++) {
-    tabPromises.push(newTab(browser))
-  }
-
-  const tabs = await Promise.all(tabPromises)
-
-  while (tabs.length > 0) {
-    // wait until any tab is an actor
-    await Promise.race([
-      rejectAfter10s(new Error('timed out waiting for new tab to become actor')),
-      ...tabs.map((tab) => tab.actingPromise)
-    ])
-
-    const actingTabs = tabs.filter((tab) => tab.isActing === true)
-    assert.equal(actingTabs.length, 1, 'there should be exactly one actor')
-
-    const randomTabIndex = Math.floor(Math.random() * tabs.length)
-
-    // close random tab
-    await tabs[randomTabIndex].page.close({ runBeforeUnload: true })
-
-    // remove closed tab from tabs[]
-    tabs.splice(randomTabIndex, 1)
-  }
 
   browser.close()
 })
