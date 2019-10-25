@@ -46,7 +46,8 @@ module.exports = async function onlyOneTab (action) {
       if (await race(actorRaceId)) {
         becomeActor()
 
-        window.removeEventListener('storage', handler) // cleanup
+        // no need to listen for vacant signals when we're acting
+        window.removeEventListener('storage', handler)
       }
     }
   })
