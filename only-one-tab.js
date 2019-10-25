@@ -15,7 +15,11 @@ module.exports = async function onlyOneTab (action) {
   const resetRaceId = 'onlyOneTab-reset-race'
   const heartbeatInterval = 1000 // 1s is the minimum settimeout for background tabs
 
+  let acting = false
+
   async function becomeActor () {
+    acting = true
+
     action()
 
     localStorage.removeItem(vacantKey) // reset localStorage signal
@@ -56,12 +60,10 @@ module.exports = async function onlyOneTab (action) {
   // on start and then periodically to ensure nothing gets stuck
   // sometimes the 'storage' event doesn't fire
   // somtimes the actorRace randomly gets stuck
-  while (true) {
+  while (!acting) {
     // actorRace lasts until actor tab is closed
     if (await race(actorRaceId)) {
       becomeActor()
-
-      break // end periodic check since we're the actor now
 
     // reset if the last active tab closed without ending the actor race somehow
     } else if (isTimedOut()) {
@@ -74,8 +76,6 @@ module.exports = async function onlyOneTab (action) {
         // also wait for any other resetters to finish to prevent multiple actors
         await sleep(1000)
         endRace(resetRaceId)
-
-        break // end periodic check since we're the actor now
       }
     }
 
