@@ -149,9 +149,14 @@ test('quickly close lots of tabs at once including the actor', async () => {
   const nonActor = await newTab(browser)
 
   // close all tabs but nonActor concurrently
-  for (const tab of tabsToClose) {
-    tab.page.close({ runBeforeUnload: true })
-  }
+  await Promise.all(
+    tabsToClose.map((tab) => {
+      tab.page.close({ runBeforeUnload: true })
+    })
+  )
+
+  // wait out the heartbeat timeout + maximum polling delay
+  await sleep(4 * 1000)
 
   // wait for nonActor to act
   await Promise.race([
