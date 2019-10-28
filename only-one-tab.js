@@ -64,12 +64,20 @@ module.exports = async function onlyOneTab (action) {
   // sometimes the 'storage' event doesn't fire
   // somtimes the actorRace randomly gets stuck
   while (!acting) {
-    // actorRace lasts until actor tab is closed
-    if (await race(actorRaceId)) {
-      becomeActor()
+    try {
+      // actorRace lasts until actor tab is closed
+      if (await race(actorRaceId)) {
+        becomeActor()
+
+        break
+      }
+    } catch (error) {
+      // log errors from race(), but continue to reset
+      console.error(error)
+    }
 
     // reset if the last active tab closed without ending the actor race somehow
-    } else if (isTimedOut()) {
+    if (isTimedOut()) {
       // multiple tabs may try to reset at once, so a race is necessary
       if (await race(resetRaceId)) {
         // no need to end the actorRace because this tab replaces the old winner
@@ -79,6 +87,8 @@ module.exports = async function onlyOneTab (action) {
         // also wait for any other resetters to finish to prevent multiple actors
         await sleep(1000)
         endRace(resetRaceId)
+
+        break
       }
     }
 
