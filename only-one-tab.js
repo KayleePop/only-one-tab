@@ -75,7 +75,7 @@ module.exports = async function onlyOneTab (action) {
         // no need to end the actorRace because this tab replaces the old winner
         becomeActor()
 
-        // wait for heartbeat to start (no resets with active heartbeat)
+        // wait for heartbeat to start (no new resets if there's an active heartbeat)
         // also wait for any other resetters to finish to prevent multiple actors
         await sleep(1000)
         endRace(resetRaceId)
