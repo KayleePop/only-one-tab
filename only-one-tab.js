@@ -18,7 +18,7 @@ module.exports = async function onlyOneTab (action) {
   let acting = false
 
   async function becomeActor () {
-    // ensure the action isn't execute twice
+    // ensure the action isn't executed twice
     if (acting) return
 
     acting = true
