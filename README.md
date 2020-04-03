@@ -1,6 +1,8 @@
 # Only One Tab
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/KayleePop/only-one-tab.svg)](https://greenkeeper.io/) [![Travis badge](https://travis-ci.org/KayleePop/only-one-tab.svg?branch=master)](https://travis-ci.org/KayleePop/only-one-tab) [![standard badge](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) [![npm](https://img.shields.io/npm/v/only-one-tab.svg)](https://www.npmjs.com/package/only-one-tab)
+[![Node.js CI](https://github.com/KayleePop/only-one-tab/workflows/Node.js%20CI/badge.svg)](https://github.com/KayleePop/only-one-tab/actions)
+[![standard badge](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) 
+[![npm](https://img.shields.io/npm/v/only-one-tab.svg)](https://www.npmjs.com/package/only-one-tab)
 
 Run a function in exactly one open tab, switching to another if closed.
 
