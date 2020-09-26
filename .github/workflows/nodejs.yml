@@ -16,10 +16,5 @@ jobs:
     - uses: actions/setup-node@v2-beta
       with:
         node-version: '12'
-    - run: sudo apt-get install xvfb
     - run: npm install
-    - run: xvfb-run --auto-servernum npm test
-      env:
-        CI: true
-    - name: Cleanup xvfb pidx
-      uses: bcomnes/cleanup-xvfb@v1
+    - run: npm test
